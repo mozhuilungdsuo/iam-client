@@ -38,7 +38,7 @@ php artisan vendor:publish --tag=nagaland-iam-migrations
 php artisan migrate
 ```
 
-The migrations add `iam_user_id` and `is_iam_active` to the local `users` table. The local application still has a user record for sessions and Laravel auth, but IAM remains the source of truth for identities, roles, and permissions.
+The migrations add `iam_user_id` and `is_iam_active` to the local `users` table. Synced IAM users are created with `is_iam_active = false` by default; the consuming client application decides when to activate them. The local application still has a user record for sessions and Laravel auth, but IAM remains the source of truth for identities, roles, and permissions.
 
 ## Environment
 
