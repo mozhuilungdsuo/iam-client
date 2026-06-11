@@ -1,0 +1,65 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "mozhuilungdsuo/nagaland-iam-client",
+    "description": "Laravel client package for the Nagaland IAM platform.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "iam",
+        "oauth",
+        "openid",
+        "nagaland"
+    ],
+    "homepage": "https://github.com/mozhuilungdsuo/nagaland-iam-client",
+    "authors": [
+        {
+            "name": "mozhuilungdsuo",
+            "homepage": "https://github.com/mozhuilungdsuo"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/mozhuilungdsuo/nagaland-iam-client/issues",
+        "source": "https://github.com/mozhuilungdsuo/nagaland-iam-client"
+    },
+    "require": {
+        "php": "^8.4",
+        "illuminate/auth": "^13.0",
+        "illuminate/cache": "^13.0",
+        "illuminate/config": "^13.0",
+        "illuminate/console": "^13.0",
+        "illuminate/contracts": "^13.0",
+        "illuminate/database": "^13.0",
+        "illuminate/http": "^13.0",
+        "illuminate/routing": "^13.0",
+        "illuminate/session": "^13.0",
+        "illuminate/support": "^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^11.0",
+        "pestphp/pest": "^4.0 || ^5.0",
+        "pestphp/pest-plugin-laravel": "^4.0 || ^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nagaland\\IamClient\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Nagaland\\IamClient\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Nagaland\\IamClient\\NagalandIamServiceProvider"
+            ],
+            "aliases": {
+                "NagalandIam": "Nagaland\\IamClient\\Facades\\NagalandIam"
+            }
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

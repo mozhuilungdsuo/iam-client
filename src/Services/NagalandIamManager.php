@@ -1,0 +1,94 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Nagaland\IamClient\Services;
+
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Session\SessionManager;
+use Nagaland\IamClient\DTOs\TokenSet;
+use Nagaland\IamClient\Events\PermissionsRefreshed;
+
+readonly class NagalandIamManager
+{
+    public function __construct(
+        private AuthFactory $auth,
+        private SessionManager $session,
+        private PermissionRepository $permissions,
+        private OAuthIamClient $client,
+        private array $config,
+    ) {}
+
+    public function user(): ?Authenticatable
+    {
+        return $this->auth->guard()->user();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function roles(): array
+    {
+        $user = $this->user();
+        $tokens = $this->tokens();
+
+        return $user && $tokens ? $this->permissions->roles($user, $tokens) : [];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function permissions(): array
+    {
+        $user = $this->user();
+        $tokens = $this->tokens();
+
+        return $user && $tokens ? $this->permissions->permissions($user, $tokens) : [];
+    }
+
+    public function hasRole(string $role): bool
+    {
+        return in_array($role, $this->roles(), true);
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        $permissions = $this->permissions();
+
+        return in_array('*', $permissions, true) || in_array($permission, $permissions, true);
+    }
+
+    public function refreshPermissions(): void
+    {
+        $user = $this->user();
+
+        $this->permissions->clear($user);
+
+        if ($user !== null) {
+            event(new PermissionsRefreshed($user));
+        }
+    }
+
+    public function logout(): void
+    {
+        $tokens = $this->tokens();
+
+        if ($tokens !== null) {
+            $this->client->logout($tokens);
+        }
+
+        $this->session->forget($this->config['session']['tokens']);
+        $this->session->forget($this->config['session']['user']);
+        $this->auth->guard()->logout();
+        $this->session->invalidate();
+        $this->session->regenerateToken();
+    }
+
+    public function tokens(): ?TokenSet
+    {
+        $payload = $this->session->get($this->config['session']['tokens']);
+
+        return is_array($payload) && isset($payload['access_token']) ? TokenSet::fromSession($payload) : null;
+    }
+}
