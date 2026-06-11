@@ -27,7 +27,10 @@ final class NagalandIamServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/nagaland-iam.php', 'nagaland-iam');
-        $this->mergeConfigFrom(__DIR__.'/../config/iam-roles.php', 'iam-roles');
+
+        if (! $this->app['config']->has('iam-roles')) {
+            $this->app['config']->set('iam-roles', require __DIR__.'/../config/iam-roles.php');
+        }
 
         $this->app->singleton(OAuthIamClient::class, fn ($app): OAuthIamClient => new OAuthIamClient(
             http: $app->make(HttpFactory::class),
