@@ -40,31 +40,11 @@ For local development from this monorepo, add the path repository to the consumi
 Then install the package:
 
 ```bash
-composer require mozhuilungdsuo/iam-client:^0.1
+composer require mozhuilungdsuo/iam-client
 ```
 
 Laravel auto-discovers the service provider and facade.
 
-## GitHub Repository
-
-This package is prepared for:
-
-```text
-https://github.com/mozhuilungdsuo/iam-client
-```
-
-If the repository does not exist yet, create it on GitHub first. Then push the package/app repo:
-
-```bash
-git init
-git add .
-git commit -m "Initial Nagaland IAM client package"
-git branch -M main
-git remote add origin git@github.com:mozhuilungdsuo/iam-client.git
-git push -u origin main
-```
-
-After it is on GitHub, you can submit the repository URL to Packagist and install it in other Laravel apps with the `composer require` command above.
 
 ## Publish Package Files
 
@@ -81,13 +61,13 @@ The migration adds `iam_user_id` to the local `users` table. The local applicati
 Add these values to the consuming application's `.env`:
 
 ```dotenv
-APP_URL=http://127.0.0.1:8001
+APP_URL=http://localhost:8001
 
 SESSION_DRIVER=database
 SESSION_COOKIE=my_app_iam_client_session
 
 IAM_DRIVER=oauth
-IAM_URL=http://127.0.0.1:8000
+IAM_URL=http://localhost:8000
 IAM_CLIENT_ID=iam_client_id_from_iam
 IAM_CLIENT_SECRET=plain_secret_shown_once_by_iam
 IAM_REDIRECT_URI="${APP_URL}/iam/callback"
@@ -95,7 +75,7 @@ IAM_APPLICATION_CODE=crs
 IAM_CACHE_TTL=3600
 ```
 
-Use a unique `SESSION_COOKIE` for each local Laravel app. Browsers share cookies by hostname, not by port, so `127.0.0.1:8000` and `127.0.0.1:8001` will overwrite each other if both use Laravel's default `laravel-session` cookie.
+Use a unique `SESSION_COOKIE` for each local Laravel app. Browsers share cookies by hostname, not by port, so `localhost:8000` and `localhost:8001` will overwrite each other if both use Laravel's default `laravel-session` cookie.
 
 After changing `.env`, clear cached config:
 
@@ -112,13 +92,13 @@ In the IAM server admin panel:
 3. Add this redirect URI:
 
 ```text
-http://127.0.0.1:8001/iam/callback
+http://localhost:8001/iam/callback
 ```
 
 4. Copy the generated `client_id` and plain client secret into the client app `.env`.
 5. Assign users to the application and give them roles/permissions.
 
-For local development, keep hostnames consistent. Prefer `127.0.0.1` everywhere or `localhost` everywhere; do not mix them.
+For local development, keep hostnames consistent. Prefer `localhost` everywhere or `localhost` everywhere; do not mix them.
 
 ## Routes
 
@@ -241,26 +221,26 @@ Run the IAM server:
 
 ```bash
 cd ../nagaland-iam
-php artisan serve --host=127.0.0.1 --port=8000
+php artisan serve --host=localhost --port=8000
 ```
 
 Run the client app:
 
 ```bash
 cd ../nagaland-iam-client
-php artisan serve --host=127.0.0.1 --port=8001
+php artisan serve --host=localhost --port=8001
 ```
 
 Open:
 
 ```text
-http://127.0.0.1:8001/dashboard
+http://localhost:8001/dashboard
 ```
 
 The browser should redirect to IAM, then back to:
 
 ```text
-http://127.0.0.1:8001/iam/callback
+http://localhost:8001/iam/callback
 ```
 
 and finally to the client dashboard.
@@ -269,6 +249,6 @@ and finally to the client dashboard.
 
 - `404` on `/oauth/authorize`: make sure the IAM server is running, not the client app, on the URL in `IAM_URL`.
 - `400` on `/iam/callback`: clear cookies and confirm both apps use unique `SESSION_COOKIE` names.
-- Login loops: keep `APP_URL`, `IAM_URL`, and OAuth redirect URI on the same hostname style, for example all `127.0.0.1`.
+- Login loops: keep `APP_URL`, `IAM_URL`, and OAuth redirect URI on the same hostname style, for example all `localhost`.
 - `Invalid OAuth client credentials`: rotate or recreate the IAM OAuth client secret and update `IAM_CLIENT_SECRET`.
 - `redirect_uri is not registered`: add the exact `IAM_REDIRECT_URI` value to the OAuth client in IAM.
