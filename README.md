@@ -21,23 +21,7 @@ The package provides:
 
 ## Install
 
-For local development from this monorepo, add the path repository to the consuming Laravel app:
-
-```json
-{
-    "repositories": [
-        {
-            "type": "path",
-            "url": "packages/nagaland/iam-client",
-            "options": {
-                "symlink": true
-            }
-        }
-    ]
-}
-```
-
-Then install the package:
+ install the package:
 
 ```bash
 composer require mozhuilungdsuo/iam-client
