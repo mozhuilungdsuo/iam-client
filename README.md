@@ -40,7 +40,7 @@ For local development from this monorepo, add the path repository to the consumi
 Then install the package:
 
 ```bash
-composer require mozhuilungdsuo/nagaland-iam-client:^0.1
+composer require mozhuilungdsuo/iam-client:^0.1
 ```
 
 Laravel auto-discovers the service provider and facade.
@@ -50,7 +50,7 @@ Laravel auto-discovers the service provider and facade.
 This package is prepared for:
 
 ```text
-https://github.com/mozhuilungdsuo/nagaland-iam-client
+https://github.com/mozhuilungdsuo/iam-client
 ```
 
 If the repository does not exist yet, create it on GitHub first. Then push the package/app repo:
@@ -60,7 +60,7 @@ git init
 git add .
 git commit -m "Initial Nagaland IAM client package"
 git branch -M main
-git remote add origin git@github.com:mozhuilungdsuo/nagaland-iam-client.git
+git remote add origin git@github.com:mozhuilungdsuo/iam-client.git
 git push -u origin main
 ```
 

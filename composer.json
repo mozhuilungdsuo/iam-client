@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "mozhuilungdsuo/nagaland-iam-client",
+    "name": "mozhuilungdsuo/iam-client",
     "description": "Laravel client package for the Nagaland IAM platform.",
     "type": "library",
     "license": "MIT",
@@ -11,7 +11,7 @@
         "openid",
         "nagaland"
     ],
-    "homepage": "https://github.com/mozhuilungdsuo/nagaland-iam-client",
+    "homepage": "https://github.com/mozhuilungdsuo/iam-client",
     "authors": [
         {
             "name": "mozhuilungdsuo",
@@ -19,8 +19,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/mozhuilungdsuo/nagaland-iam-client/issues",
-        "source": "https://github.com/mozhuilungdsuo/nagaland-iam-client"
+        "issues": "https://github.com/mozhuilungdsuo/iam-client/issues",
+        "source": "https://github.com/mozhuilungdsuo/iam-client"
     },
     "require": {
         "php": "^8.4",
