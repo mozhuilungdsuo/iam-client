@@ -167,6 +167,35 @@ Sync them to IAM:
 php artisan iam:sync-permissions
 ```
 
+## Define Roles
+
+Create `config/iam-roles.php` in the consuming app:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+return [
+    'CRS.Registrar' => [
+        'name' => 'CRS Registrar',
+        'description' => 'Can create and edit civil registration records.',
+        'permissions' => [
+            'crs.birth.create',
+            'crs.birth.edit',
+        ],
+    ],
+];
+```
+
+The package exposes these definitions at:
+
+```text
+GET /iam/role-definitions
+```
+
+IAM can use that endpoint to fetch role codes, names, descriptions, and suggested permission codes while creating roles for the application.
+
 The package also registers Laravel gates for each permission code in `config/iam-permissions.php`, so you can use:
 
 ```php
