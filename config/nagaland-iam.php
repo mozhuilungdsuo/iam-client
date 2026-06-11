@@ -18,6 +18,11 @@ return [
 
     'cache_ttl' => (int) env('IAM_CACHE_TTL', 3600),
 
+    'id_token' => [
+        'verify' => env('IAM_VERIFY_ID_TOKEN', true),
+        'leeway' => (int) env('IAM_ID_TOKEN_LEEWAY', 60),
+    ],
+
     'routes' => [
         'enabled' => env('IAM_ROUTES_ENABLED', true),
         'prefix' => env('IAM_ROUTE_PREFIX', 'iam'),
@@ -34,6 +39,7 @@ return [
         'refresh' => '/api/token/refresh',
         'logout' => '/api/logout',
         'discovery' => '/.well-known/openid-configuration',
+        'jwks' => '/.well-known/jwks.json',
     ],
 
     'session' => [

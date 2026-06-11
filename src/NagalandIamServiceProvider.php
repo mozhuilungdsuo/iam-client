@@ -17,6 +17,7 @@ use Nagaland\IamClient\Contracts\IamClient;
 use Nagaland\IamClient\Middleware\AuthenticateWithIam;
 use Nagaland\IamClient\Middleware\RequirePermission;
 use Nagaland\IamClient\Middleware\RequireRole;
+use Nagaland\IamClient\Services\IdTokenVerifier;
 use Nagaland\IamClient\Services\NagalandIamManager;
 use Nagaland\IamClient\Services\OAuthIamClient;
 use Nagaland\IamClient\Services\PermissionRepository;
@@ -32,8 +33,14 @@ final class NagalandIamServiceProvider extends ServiceProvider
             $this->app['config']->set('iam-roles', require __DIR__.'/../config/iam-roles.php');
         }
 
+        $this->app->singleton(IdTokenVerifier::class, fn ($app): IdTokenVerifier => new IdTokenVerifier(
+            http: $app->make(HttpFactory::class),
+            config: $app['config']->get('nagaland-iam'),
+        ));
+
         $this->app->singleton(OAuthIamClient::class, fn ($app): OAuthIamClient => new OAuthIamClient(
             http: $app->make(HttpFactory::class),
+            verifier: $app->make(IdTokenVerifier::class),
             config: $app['config']->get('nagaland-iam'),
         ));
 

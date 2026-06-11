@@ -57,6 +57,8 @@ IAM_CLIENT_SECRET=plain_secret_shown_once_by_iam
 IAM_REDIRECT_URI="${APP_URL}/iam/callback"
 IAM_APPLICATION_CODE=crs
 IAM_CACHE_TTL=3600
+IAM_VERIFY_ID_TOKEN=true
+IAM_ID_TOKEN_LEEWAY=60
 ```
 
 Use a unique `SESSION_COOKIE` for each local Laravel app. Browsers share cookies by hostname, not by port, so `localhost:8000` and `localhost:8001` will overwrite each other if both use Laravel's default `laravel-session` cookie.
@@ -67,6 +69,17 @@ The package requests these OAuth scopes during login:
 openid profile email roles permissions
 ```
 
+`IAM_VERIFY_ID_TOKEN=true` makes the package verify the OIDC `id_token` signature through the IAM server JWKS endpoint, then check issuer, audience, expiry, and subject before syncing the local user.
+
+During login the package verifies:
+
+- the `id_token` is signed with `RS256`
+- the signing key exists in `/.well-known/jwks.json`
+- `iss` matches `IAM_URL`
+- `aud` matches `IAM_CLIENT_ID`
+- `exp`, `nbf`, and `iat` are valid within `IAM_ID_TOKEN_LEEWAY`
+- `sub` matches the user returned by `/oauth/userinfo`
+
 After changing `.env`, clear cached config:
 
 ```bash
@@ -74,6 +87,16 @@ php artisan optimize:clear
 ```
 
 ## IAM Server Setup
+
+Before creating client applications, prepare the IAM server:
+
+```bash
+cd nagaland-iam
+php artisan migrate
+php artisan iam:oidc-keys
+```
+
+The migration adds per-client OAuth scope allowlists. The key command creates the RS256 key pair used for OIDC `id_token` signing and the JWKS endpoint.
 
 In the IAM server admin panel:
 
@@ -85,8 +108,26 @@ In the IAM server admin panel:
 http://localhost:8001/iam/callback
 ```
 
-4. Copy the generated `client_id` and plain client secret into the client app `.env`.
-5. Assign users to the application and give them roles/permissions.
+4. Enable these allowed scopes on the OAuth client:
+
+```text
+openid profile email roles permissions
+```
+
+5. Copy the generated `client_id` and plain client secret into the client app `.env`.
+6. Assign users to the application and give them roles/permissions.
+
+For production, run Laravel's scheduler so expired OAuth records are pruned:
+
+```bash
+php artisan schedule:work
+```
+
+Or configure cron to run:
+
+```bash
+php artisan schedule:run
+```
 
 For local development, keep hostnames consistent. Prefer `localhost` everywhere or `127.0.0.1` everywhere; do not mix them.
 
@@ -280,5 +321,7 @@ and finally to the client dashboard.
 - `404` on `/oauth/authorize`: make sure the IAM server is running, not the client app, on the URL in `IAM_URL`.
 - `400` on `/iam/callback`: clear cookies and confirm both apps use unique `SESSION_COOKIE` names.
 - Login loops: keep `APP_URL`, `IAM_URL`, and OAuth redirect URI on the same hostname style, for example all `localhost`.
+- `403` on roles or permissions: make sure the OAuth client allows `roles` and `permissions`, then log out and log in again.
+- Missing `id_token` or JWKS errors: run `php artisan iam:oidc-keys` on the IAM server.
 - `Invalid OAuth client credentials`: rotate or recreate the IAM OAuth client secret and update `IAM_CLIENT_SECRET`.
 - `redirect_uri is not registered`: add the exact `IAM_REDIRECT_URI` value to the OAuth client in IAM.

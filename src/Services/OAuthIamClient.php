@@ -21,6 +21,7 @@ final readonly class OAuthIamClient implements IamClient
      */
     public function __construct(
         private HttpFactory $http,
+        private IdTokenVerifier $verifier,
         private array $config,
     ) {}
 
@@ -41,7 +42,10 @@ final readonly class OAuthIamClient implements IamClient
             'code_verifier' => $codeVerifier,
         ];
 
-        return TokenSet::fromArray($this->request()->asForm()->post($this->endpoint('token'), $payload)->throw()->json());
+        $tokens = TokenSet::fromArray($this->request()->asForm()->post($this->endpoint('token'), $payload)->throw()->json());
+        $this->verifier->verify($tokens->idToken);
+
+        return $tokens;
     }
 
     public function refreshToken(string $refreshToken): TokenSet
@@ -51,12 +55,18 @@ final readonly class OAuthIamClient implements IamClient
             'refresh_token' => $refreshToken,
         ];
 
-        return TokenSet::fromArray($this->request()->asForm()->post($this->endpoint('token'), $payload)->throw()->json());
+        $tokens = TokenSet::fromArray($this->request()->asForm()->post($this->endpoint('token'), $payload)->throw()->json());
+        $this->verifier->verify($tokens->idToken);
+
+        return $tokens;
     }
 
     public function userInfo(TokenSet $tokens): IamUser
     {
-        return IamUser::fromArray($this->request($tokens)->get($this->endpoint('userinfo'))->throw()->json());
+        $user = IamUser::fromArray($this->request($tokens)->get($this->endpoint('userinfo'))->throw()->json());
+        $this->verifier->assertSubject($tokens->idToken, $user->id);
+
+        return $user;
     }
 
     public function roles(TokenSet $tokens): array
