@@ -64,6 +64,7 @@ final class NagalandIamServiceProvider extends ServiceProvider
 
         $this->publishes([
             __DIR__.'/../database/migrations/2026_01_01_000000_add_iam_columns_to_users_table.php' => database_path('migrations/2026_01_01_000000_add_iam_columns_to_users_table.php'),
+            __DIR__.'/../database/migrations/2026_01_01_000001_add_iam_active_column_to_users_table.php' => database_path('migrations/2026_01_01_000001_add_iam_active_column_to_users_table.php'),
         ], 'nagaland-iam-migrations');
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');

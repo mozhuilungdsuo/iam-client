@@ -28,6 +28,7 @@ final readonly class UserSynchronizer
 
         $values = [
             'iam_user_id' => $iamUser->id,
+            'is_iam_active' => true,
             'name' => $iamUser->name,
             'email' => $iamUser->email,
         ];

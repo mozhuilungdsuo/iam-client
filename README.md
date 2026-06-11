@@ -38,7 +38,7 @@ php artisan vendor:publish --tag=nagaland-iam-migrations
 php artisan migrate
 ```
 
-The migration adds `iam_user_id` to the local `users` table. The local application still has a user record for sessions and Laravel auth, but IAM remains the source of truth for identities, roles, and permissions.
+The migrations add `iam_user_id` and `is_iam_active` to the local `users` table. The local application still has a user record for sessions and Laravel auth, but IAM remains the source of truth for identities, roles, and permissions.
 
 ## Environment
 
