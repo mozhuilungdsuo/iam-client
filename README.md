@@ -61,6 +61,12 @@ IAM_CACHE_TTL=3600
 
 Use a unique `SESSION_COOKIE` for each local Laravel app. Browsers share cookies by hostname, not by port, so `localhost:8000` and `localhost:8001` will overwrite each other if both use Laravel's default `laravel-session` cookie.
 
+The package requests these OAuth scopes during login:
+
+```text
+openid profile email roles permissions
+```
+
 After changing `.env`, clear cached config:
 
 ```bash

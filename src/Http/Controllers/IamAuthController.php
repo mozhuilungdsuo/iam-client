@@ -40,7 +40,7 @@ final class IamAuthController extends Controller
             'response_type' => 'code',
             'client_id' => (string) $this->config->get('nagaland-iam.client_id'),
             'redirect_uri' => (string) $this->config->get('nagaland-iam.redirect_uri'),
-            'scope' => 'openid profile email',
+            'scope' => 'openid profile email roles permissions',
             'state' => $state,
             'code_challenge' => $this->pkce->challenge($verifier),
             'code_challenge_method' => 'S256',
