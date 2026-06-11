@@ -169,7 +169,11 @@ php artisan iam:sync-permissions
 
 ## Define Roles
 
-Create `config/iam-roles.php` in the consuming app:
+Publish or create `config/iam-roles.php` in the consuming app:
+
+```bash
+php artisan vendor:publish --tag=nagaland-iam-config
+```
 
 ```php
 <?php
