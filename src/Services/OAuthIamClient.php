@@ -71,7 +71,7 @@ final readonly class OAuthIamClient implements IamClient
 
     public function syncPermissions(array $permissions): array
     {
-        $payload = [
+        $payload = $this->baseTokenPayload() + [
             'application_code' => (string) $this->config['application_code'],
             'permissions' => array_map(
                 fn (PermissionDefinition $permission): array => $permission->toArray(),

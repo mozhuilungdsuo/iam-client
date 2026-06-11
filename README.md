@@ -82,7 +82,7 @@ http://localhost:8001/iam/callback
 4. Copy the generated `client_id` and plain client secret into the client app `.env`.
 5. Assign users to the application and give them roles/permissions.
 
-For local development, keep hostnames consistent. Prefer `localhost` everywhere or `localhost` everywhere; do not mix them.
+For local development, keep hostnames consistent. Prefer `localhost` everywhere or `127.0.0.1` everywhere; do not mix them.
 
 ## Routes
 
@@ -92,6 +92,7 @@ The package registers these routes by default under the `iam` prefix:
 GET  /iam/login
 GET  /iam/callback
 POST /iam/logout
+GET  /iam/role-definitions
 ```
 
 You can change the prefix or disable route registration in `config/nagaland-iam.php`:
@@ -199,6 +200,7 @@ GET /iam/role-definitions
 ```
 
 IAM can use that endpoint to fetch role codes, names, descriptions, and suggested permission codes while creating roles for the application.
+The endpoint accepts requests that include the configured `IAM_CLIENT_ID` in the `X-IAM-Client-Id` header.
 
 The package also registers Laravel gates for each permission code in `config/iam-permissions.php`, so you can use:
 
