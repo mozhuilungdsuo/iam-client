@@ -6,6 +6,7 @@ namespace Nagaland\IamClient\Services;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Session\SessionManager;
 use Nagaland\IamClient\DTOs\TokenSet;
 use Nagaland\IamClient\Events\PermissionsRefreshed;
@@ -57,6 +58,27 @@ readonly class NagalandIamManager
         $permissions = $this->permissions();
 
         return in_array('*', $permissions, true) || in_array($permission, $permissions, true);
+    }
+
+    public function isIamActive(?Authenticatable $user = null): bool
+    {
+        $user ??= $this->user();
+
+        return $user instanceof Model
+            && (bool) $user->getAttribute('is_iam_active');
+    }
+
+    public function setIamActive(bool $active, ?Authenticatable $user = null): bool
+    {
+        $user ??= $this->user();
+
+        if (! $user instanceof Model) {
+            return false;
+        }
+
+        $user->forceFill(['is_iam_active' => $active])->save();
+
+        return true;
     }
 
     public function refreshPermissions(): void

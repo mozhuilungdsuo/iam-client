@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Facade;
  * @method static list<string> permissions()
  * @method static bool hasRole(string $role)
  * @method static bool hasPermission(string $permission)
+ * @method static bool isIamActive(\Illuminate\Contracts\Auth\Authenticatable|null $user = null)
+ * @method static bool setIamActive(bool $active, \Illuminate\Contracts\Auth\Authenticatable|null $user = null)
  * @method static void logout()
  * @method static void refreshPermissions()
  */

@@ -189,6 +189,11 @@ $permissions = NagalandIam::permissions();
 if (NagalandIam::hasPermission('crs.birth.approve')) {
     // ...
 }
+
+NagalandIam::setIamActive(true);  // activate the current local user
+NagalandIam::setIamActive(false); // deactivate the current local user
+
+$active = NagalandIam::isIamActive();
 ```
 
 ## Commands
