@@ -40,7 +40,7 @@ final class IamAuthController extends Controller
             'response_type' => 'code',
             'client_id' => (string) $this->config->get('nagaland-iam.client_id'),
             'redirect_uri' => (string) $this->config->get('nagaland-iam.redirect_uri'),
-            'scope' => 'openid profile email roles permissions',
+            'scope' => $this->scopes(),
             'state' => $state,
             'code_challenge' => $this->pkce->challenge($verifier),
             'code_challenge_method' => 'S256',
@@ -80,5 +80,23 @@ final class IamAuthController extends Controller
     private function sessionKey(string $key): string
     {
         return (string) $this->config->get("nagaland-iam.session.{$key}");
+    }
+
+    private function scopes(): string
+    {
+        $scopes = $this->config->get('nagaland-iam.scopes', []);
+
+        if (is_string($scopes)) {
+            return trim($scopes);
+        }
+
+        if (! is_array($scopes)) {
+            return '';
+        }
+
+        return implode(' ', array_values(array_unique(array_filter(
+            array_map(static fn (mixed $scope): string => trim((string) $scope), $scopes),
+            static fn (string $scope): bool => $scope !== '',
+        ))));
     }
 }

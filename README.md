@@ -63,10 +63,23 @@ IAM_ID_TOKEN_LEEWAY=60
 
 Use a unique `SESSION_COOKIE` for each local Laravel app. Browsers share cookies by hostname, not by port, so `localhost:8000` and `localhost:8001` will overwrite each other if both use Laravel's default `laravel-session` cookie.
 
-The package requests these OAuth scopes during login:
+By default, the package requests these OAuth scopes during login:
 
 ```text
-openid profile email roles permissions
+openid profile email roles permissions govt_employee_details
+```
+
+You can change the requested scopes in `config/nagaland-iam.php`:
+
+```php
+'scopes' => [
+    'openid',
+    'profile',
+    'email',
+    'roles',
+    'permissions',
+    'govt_employee_details',
+],
 ```
 
 `IAM_VERIFY_ID_TOKEN=true` makes the package verify the OIDC `id_token` signature through the IAM server JWKS endpoint, then check issuer, audience, expiry, and subject before syncing the local user.
@@ -111,7 +124,7 @@ http://localhost:8001/iam/callback
 4. Enable these allowed scopes on the OAuth client:
 
 ```text
-openid profile email roles permissions
+openid profile email roles permissions govt_employee_details
 ```
 
 5. Copy the generated `client_id` and plain client secret into the client app `.env`.
@@ -265,6 +278,8 @@ Gate::allows('crs.birth.create');
 use Nagaland\IamClient\Facades\NagalandIam;
 
 $user = NagalandIam::user();
+$iamUser = NagalandIam::iamUser();
+$govtEmpProfile = NagalandIam::govtEmpProfile();
 $roles = NagalandIam::roles();
 $permissions = NagalandIam::permissions();
 
@@ -277,6 +292,21 @@ NagalandIam::setIamActive(false); // deactivate the current local user
 
 $active = NagalandIam::isIamActive();
 ```
+
+`NagalandIam::user()` returns the local Laravel user. `NagalandIam::iamUser()` returns the full IAM userinfo payload stored during login.
+
+When the `govt_employee_details` scope is granted, `NagalandIam::govtEmpProfile()` returns:
+
+```php
+[
+    'designation' => 'Registrar',
+    'department' => 'Home Department',
+    'office' => 'Kohima HQ',
+    'pims_code' => 'PIMS-123',
+]
+```
+
+It returns `null` when IAM did not send a government employee profile.
 
 ## Commands
 
@@ -322,6 +352,7 @@ and finally to the client dashboard.
 - `400` on `/iam/callback`: clear cookies and confirm both apps use unique `SESSION_COOKIE` names.
 - Login loops: keep `APP_URL`, `IAM_URL`, and OAuth redirect URI on the same hostname style, for example all `localhost`.
 - `403` on roles or permissions: make sure the OAuth client allows `roles` and `permissions`, then log out and log in again.
+- Missing government employee profile data: make sure the OAuth client allows `govt_employee_details` and the package requests that scope, then log out and log in again.
 - Missing `id_token` or JWKS errors: run `php artisan iam:oidc-keys` on the IAM server.
 - `Invalid OAuth client credentials`: rotate or recreate the IAM OAuth client secret and update `IAM_CLIENT_SECRET`.
 - `redirect_uri is not registered`: add the exact `IAM_REDIRECT_URI` value to the OAuth client in IAM.

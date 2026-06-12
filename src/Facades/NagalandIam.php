@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Facade;
 
 /**
  * @method static \Illuminate\Contracts\Auth\Authenticatable|null user()
+ * @method static array<string, mixed> iamUser()
+ * @method static array<string, mixed>|null govtEmpProfile()
  * @method static list<string> roles()
  * @method static list<string> permissions()
  * @method static bool hasRole(string $role)

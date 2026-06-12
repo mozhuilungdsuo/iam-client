@@ -27,6 +27,26 @@ readonly class NagalandIamManager
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function iamUser(): array
+    {
+        $payload = $this->session->get($this->config['session']['user']);
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function govtEmpProfile(): ?array
+    {
+        $profile = $this->iamUser()['govt_emp_profile'] ?? null;
+
+        return is_array($profile) ? $profile : null;
+    }
+
+    /**
      * @return list<string>
      */
     public function roles(): array

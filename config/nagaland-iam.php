@@ -14,6 +14,15 @@ return [
 
     'redirect_uri' => env('IAM_REDIRECT_URI'),
 
+    'scopes' => [
+        'openid',
+        'profile',
+        'email',
+        'roles',
+        'permissions',
+        'govt_employee_details',
+    ],
+
     'application_code' => env('IAM_APPLICATION_CODE'),
 
     'cache_ttl' => (int) env('IAM_CACHE_TTL', 3600),
