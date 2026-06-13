@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static bool hasPermission(string $permission)
  * @method static bool isIamActive(\Illuminate\Contracts\Auth\Authenticatable|null $user = null)
  * @method static bool setIamActive(bool $active, \Illuminate\Contracts\Auth\Authenticatable|null $user = null)
- * @method static void logout()
+ * @method static string logout()
  * @method static void refreshPermissions()
  */
 final class NagalandIam extends Facade

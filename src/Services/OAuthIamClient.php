@@ -97,6 +97,27 @@ final readonly class OAuthIamClient implements IamClient
         $this->request($tokens)->post($this->endpoint('logout'))->throw();
     }
 
+    public function endSessionUrl(?string $idTokenHint = null, ?string $postLogoutRedirectUri = null, ?string $state = null): string
+    {
+        $query = [
+            'client_id' => (string) $this->config['client_id'],
+        ];
+
+        if (is_string($idTokenHint) && $idTokenHint !== '') {
+            $query['id_token_hint'] = $idTokenHint;
+        }
+
+        if (is_string($postLogoutRedirectUri) && $postLogoutRedirectUri !== '') {
+            $query['post_logout_redirect_uri'] = $postLogoutRedirectUri;
+        }
+
+        if (is_string($state) && $state !== '') {
+            $query['state'] = $state;
+        }
+
+        return $this->url($this->endpoint('end_session')).'?'.http_build_query($query);
+    }
+
     public function health(): array
     {
         $results = [];

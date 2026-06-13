@@ -72,9 +72,9 @@ final class IamAuthController extends Controller
 
     public function logout(NagalandIamManager $iam): RedirectResponse
     {
-        $iam->logout();
+        $endSessionUrl = $iam->logout();
 
-        return redirect()->route('home');
+        return redirect()->away($endSessionUrl);
     }
 
     private function sessionKey(string $key): string

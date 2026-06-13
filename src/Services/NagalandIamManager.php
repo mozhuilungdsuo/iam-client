@@ -8,6 +8,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Session\SessionManager;
+use Illuminate\Support\Str;
 use Nagaland\IamClient\DTOs\TokenSet;
 use Nagaland\IamClient\Events\PermissionsRefreshed;
 
@@ -112,19 +113,26 @@ readonly class NagalandIamManager
         }
     }
 
-    public function logout(): void
+    public function logout(): string
     {
         $tokens = $this->tokens();
+        $endSessionUrl = $this->client->endSessionUrl(
+            idTokenHint: $tokens?->idToken,
+            postLogoutRedirectUri: $this->postLogoutRedirectUri(),
+            state: Str::random(40),
+        );
 
         if ($tokens !== null) {
-            $this->client->logout($tokens);
+            try {
+                $this->client->logout($tokens);
+            } catch (\Throwable $throwable) {
+                report($throwable);
+            }
         }
 
-        $this->session->forget($this->config['session']['tokens']);
-        $this->session->forget($this->config['session']['user']);
-        $this->auth->guard()->logout();
-        $this->session->invalidate();
-        $this->session->regenerateToken();
+        $this->clearLocalSession();
+
+        return $endSessionUrl;
     }
 
     public function tokens(): ?TokenSet
@@ -132,5 +140,21 @@ readonly class NagalandIamManager
         $payload = $this->session->get($this->config['session']['tokens']);
 
         return is_array($payload) && isset($payload['access_token']) ? TokenSet::fromSession($payload) : null;
+    }
+
+    private function postLogoutRedirectUri(): ?string
+    {
+        $uri = $this->config['post_logout_redirect_uri'] ?? null;
+
+        return is_string($uri) && $uri !== '' ? $uri : null;
+    }
+
+    private function clearLocalSession(): void
+    {
+        $this->session->forget($this->config['session']['tokens']);
+        $this->session->forget($this->config['session']['user']);
+        $this->auth->guard()->logout();
+        $this->session->invalidate();
+        $this->session->regenerateToken();
     }
 }

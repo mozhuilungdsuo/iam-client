@@ -14,6 +14,8 @@ return [
 
     'redirect_uri' => env('IAM_REDIRECT_URI'),
 
+    'post_logout_redirect_uri' => env('IAM_POST_LOGOUT_REDIRECT_URI', env('IAM_URL')),
+
     'scopes' => [
         'openid',
         'profile',
@@ -47,6 +49,7 @@ return [
         'permissions' => '/api/me/permissions',
         'refresh' => '/api/token/refresh',
         'logout' => '/api/logout',
+        'end_session' => '/oauth/logout',
         'discovery' => '/.well-known/openid-configuration',
         'jwks' => '/.well-known/jwks.json',
     ],

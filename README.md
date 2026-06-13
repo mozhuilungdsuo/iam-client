@@ -55,6 +55,7 @@ IAM_URL=http://localhost:8000
 IAM_CLIENT_ID=iam_client_id_from_iam
 IAM_CLIENT_SECRET=plain_secret_shown_once_by_iam
 IAM_REDIRECT_URI="${APP_URL}/iam/callback"
+IAM_POST_LOGOUT_REDIRECT_URI="${APP_URL}"
 IAM_APPLICATION_CODE=crs
 IAM_CACHE_TTL=3600
 IAM_VERIFY_ID_TOKEN=true
@@ -121,14 +122,20 @@ In the IAM server admin panel:
 http://localhost:8001/iam/callback
 ```
 
-4. Enable these allowed scopes on the OAuth client:
+4. Add this post logout redirect URI:
+
+```text
+http://localhost:8001
+```
+
+5. Enable these allowed scopes on the OAuth client:
 
 ```text
 openid profile email roles permissions govt_employee_details
 ```
 
-5. Copy the generated `client_id` and plain client secret into the client app `.env`.
-6. Assign users to the application and give them roles/permissions.
+6. Copy the generated `client_id` and plain client secret into the client app `.env`.
+7. Assign users to the application and give them roles/permissions.
 
 For production, run Laravel's scheduler so expired OAuth records are pruned:
 
@@ -199,6 +206,8 @@ For routes that must specifically require an active IAM session:
 ```php
 Route::middleware(['iam.auth'])->get('/iam-only', IamOnlyController::class);
 ```
+
+`iam.auth` only checks the local Laravel session for a stored IAM token. It does not call IAM on every request.
 
 ## Define Permissions
 

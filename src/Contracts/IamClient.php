@@ -39,6 +39,8 @@ interface IamClient
 
     public function logout(TokenSet $tokens): void;
 
+    public function endSessionUrl(?string $idTokenHint = null, ?string $postLogoutRedirectUri = null, ?string $state = null): string;
+
     /**
      * @return array<string, mixed>
      */
