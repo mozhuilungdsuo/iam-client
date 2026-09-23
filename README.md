@@ -60,6 +60,7 @@ IAM_APPLICATION_CODE=crs
 IAM_CACHE_TTL=3600
 IAM_VERIFY_ID_TOKEN=true
 IAM_ID_TOKEN_LEEWAY=60
+IAM_ESIGN_COMPLETION_URL="${APP_URL}/esign/complete"
 ```
 
 Use a unique `SESSION_COOKIE` for each local Laravel app. Browsers share cookies by hostname, not by port, so `localhost:8000` and `localhost:8001` will overwrite each other if both use Laravel's default `laravel-session` cookie.
@@ -80,10 +81,54 @@ You can change the requested scopes in `config/nagaland-iam.php`:
     'roles',
     'permissions',
     'govt_employee_details',
+    'esign.request',
+    'esign.read',
 ],
 ```
 
 `IAM_VERIFY_ID_TOKEN=true` makes the package verify the OIDC `id_token` signature through the IAM server JWKS endpoint, then check issuer, audience, expiry, and subject before syncing the local user.
+
+## IAM eSign broker
+
+IAM owns the C-DAC private key, request XML, callback, and signed-document storage. Client applications must not install the C-DAC private key or post directly to C-DAC.
+
+To enable eSigning:
+
+1. Add `esign.request` and `esign.read` to this application's requested OAuth scopes.
+2. Allow both scopes for the OAuth client in IAM.
+3. Register both the normal login callback and `IAM_ESIGN_COMPLETION_URL` as OAuth redirect URIs in IAM.
+4. Assign the signing user to the OAuth client's application in IAM.
+5. Run `php artisan migrate` in IAM so its `esign_transactions` table exists.
+
+The browser does not need a separate IAM login during signing. The client starts the broker request using its server-side OAuth access token, then redirects the browser to a single-use, 10-minute IAM handoff URL. IAM submits the signed request XML to C-DAC and receives the C-DAC callback. After completion, IAM redirects to the configured client completion URL.
+
+Inject `Nagaland\IamClient\Services\EsignBrokerClient` into a controller and create the request with the uploaded file. The default `direct` mode appends an invisible signature field without rebuilding the PDF, which preserves existing signatures.
+
+```php
+use Illuminate\Support\Str;
+
+$request = $esignBroker->create(
+    document: $validated['document'],
+    clientReference: (string) $document->id,
+    state: Str::random(48),
+    mode: 'direct',
+    signatureFieldName: 'Approval',
+);
+
+return redirect()->away($request->handoffUrl);
+```
+
+The completion URL receives `esign_transaction_id` and `state`. Validate the state against the client browser session, then use `status()` to obtain the authoritative result; do not trust query-string status values.
+
+```php
+$result = $esignBroker->status($transactionId);
+
+if ($result->completed()) {
+    $signedPdf = $esignBroker->download($transactionId);
+}
+```
+
+The broker API only permits the user and OAuth client that created a transaction to query it or download the signed PDF.
 
 During login the package verifies:
 
@@ -131,7 +176,7 @@ http://localhost:8001
 5. Enable these allowed scopes on the OAuth client:
 
 ```text
-openid profile email roles permissions govt_employee_details
+openid profile email roles permissions govt_employee_details esign.request esign.read
 ```
 
 6. Copy the generated `client_id` and plain client secret into the client app `.env`.

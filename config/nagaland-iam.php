@@ -25,6 +25,15 @@ return [
         'govt_employee_details',
     ],
 
+    'esign' => [
+        'completion_url' => env('IAM_ESIGN_COMPLETION_URL'),
+        'endpoints' => [
+            'create' => '/api/esign/requests',
+            'show' => '/api/esign/requests/{transaction}',
+            'download' => '/api/esign/requests/{transaction}/download',
+        ],
+    ],
+
     'application_code' => env('IAM_APPLICATION_CODE'),
 
     'cache_ttl' => (int) env('IAM_CACHE_TTL', 3600),

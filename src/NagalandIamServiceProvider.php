@@ -17,6 +17,7 @@ use Nagaland\IamClient\Contracts\IamClient;
 use Nagaland\IamClient\Middleware\AuthenticateWithIam;
 use Nagaland\IamClient\Middleware\RequirePermission;
 use Nagaland\IamClient\Middleware\RequireRole;
+use Nagaland\IamClient\Services\EsignBrokerClient;
 use Nagaland\IamClient\Services\IdTokenVerifier;
 use Nagaland\IamClient\Services\NagalandIamManager;
 use Nagaland\IamClient\Services\OAuthIamClient;
@@ -61,6 +62,12 @@ final class NagalandIamServiceProvider extends ServiceProvider
             session: $app['session'],
             permissions: $app->make(PermissionRepository::class),
             client: $app->make(OAuthIamClient::class),
+            config: $app['config']->get('nagaland-iam'),
+        ));
+
+        $this->app->singleton(EsignBrokerClient::class, fn ($app): EsignBrokerClient => new EsignBrokerClient(
+            http: $app->make(HttpFactory::class),
+            iam: $app->make(NagalandIamManager::class),
             config: $app['config']->get('nagaland-iam'),
         ));
 
