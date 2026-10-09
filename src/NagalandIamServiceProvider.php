@@ -67,7 +67,6 @@ final class NagalandIamServiceProvider extends ServiceProvider
 
         $this->app->singleton(EsignBrokerClient::class, fn ($app): EsignBrokerClient => new EsignBrokerClient(
             http: $app->make(HttpFactory::class),
-            iam: $app->make(NagalandIamManager::class),
             config: $app['config']->get('nagaland-iam'),
         ));
 

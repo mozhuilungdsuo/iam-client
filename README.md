@@ -60,6 +60,7 @@ IAM_APPLICATION_CODE=crs
 IAM_CACHE_TTL=3600
 IAM_VERIFY_ID_TOKEN=true
 IAM_ID_TOKEN_LEEWAY=60
+IAM_ESIGN_API_KEY=key_shown_once_in_iam_admin
 IAM_ESIGN_COMPLETION_URL="${APP_URL}/esign/complete"
 ```
 
@@ -81,8 +82,6 @@ You can change the requested scopes in `config/nagaland-iam.php`:
     'roles',
     'permissions',
     'govt_employee_details',
-    'esign.request',
-    'esign.read',
 ],
 ```
 
@@ -92,32 +91,34 @@ You can change the requested scopes in `config/nagaland-iam.php`:
 
 IAM owns the C-DAC private key, request XML, callback, and signed-document storage. Client applications must not install the C-DAC private key or post directly to C-DAC.
 
+For a framework-neutral HTTP integration guide, see [IAM eSign Broker Integration Guide](docs/ESIGN_BROKER_INTEGRATION.md). It covers OAuth setup, API requests, browser handoff, callback validation, and downloads for non-Laravel applications.
+
 To enable eSigning:
 
-1. Add `esign.request` and `esign.read` to this application's requested OAuth scopes.
-2. Allow both scopes for the OAuth client in IAM.
-3. Register both the normal login callback and `IAM_ESIGN_COMPLETION_URL` as OAuth redirect URIs in IAM.
-4. Assign the signing user to the OAuth client's application in IAM.
-5. Run `php artisan migrate` in IAM so its `esign_transactions` table exists.
+1. Allow `esign.request` and `esign.read` for the OAuth client in IAM.
+2. Generate the client's eSign API key in IAM Admin and store the displayed value as `IAM_ESIGN_API_KEY`.
+3. Register `IAM_ESIGN_COMPLETION_URL` as an OAuth redirect URI in IAM.
+4. Run `php artisan migrate` in IAM so its `esign_transactions` table exists.
 
-The browser does not need a separate IAM login during signing. The client starts the broker request using its server-side OAuth access token, then redirects the browser to a single-use, 10-minute IAM handoff URL. IAM submits the signed request XML to C-DAC and receives the C-DAC callback. After completion, IAM redirects to the configured client completion URL.
+The browser does not need an IAM login during signing. The client starts the broker request using its server-side eSign API key, then redirects the browser to a single-use, 10-minute IAM handoff URL. IAM submits the signed request XML to C-DAC and receives the C-DAC callback. After completion, IAM redirects to the configured client completion URL.
 
 ### `EsignBrokerClient` API
 
-`EsignBrokerClient` is registered as a Laravel singleton and can be type-hinted in a controller or resolved from the container. Each operation uses the access token stored in the current IAM session:
+`EsignBrokerClient` is registered as a Laravel singleton and can be type-hinted in a controller or resolved from the container. Each operation uses `IAM_ESIGN_API_KEY`:
 
 | Method | Required scope | Purpose |
 | --- | --- | --- |
-| `create()` | `esign.request` | Upload a document and create an eSign transaction. |
-| `status()` | `esign.read` | Retrieve the authoritative transaction state. |
-| `download()` | `esign.read` | Retrieve the completed signed document bytes. |
+| `create()` | `esign.request` allowed for the OAuth client | Upload a document and create an eSign transaction. |
+| `status()` | `esign.read` allowed for the OAuth client | Retrieve the authoritative transaction state. |
+| `download()` | `esign.read` allowed for the OAuth client | Retrieve the completed signed document bytes. |
 
-If there is no authenticated IAM session, the client throws a `RuntimeException`. Missing `IAM_URL`, `IAM_ESIGN_COMPLETION_URL`, or configured eSign endpoints cause an `IamConfigurationException`; non-successful IAM responses are raised by Laravel's HTTP client as `RequestException` instances.
+Missing `IAM_URL`, `IAM_ESIGN_API_KEY`, `IAM_ESIGN_COMPLETION_URL`, or configured eSign endpoints cause an `IamConfigurationException`; non-successful IAM responses are raised by Laravel's HTTP client as `RequestException` instances.
 
 The default endpoint configuration is:
 
 ```php
 'esign' => [
+    'api_key' => env('IAM_ESIGN_API_KEY'),
     'completion_url' => env('IAM_ESIGN_COMPLETION_URL'),
     'endpoints' => [
         'create' => '/api/esign/requests',
@@ -250,13 +251,13 @@ final class EsignController extends Controller
 }
 ```
 
-Register the routes behind your normal Laravel and IAM-session middleware. `IAM_ESIGN_COMPLETION_URL` must point to the named completion route.
+Register the routes behind your normal Laravel application-authentication middleware. `IAM_ESIGN_COMPLETION_URL` must point to the named completion route.
 
 ```php
 use App\Http\Controllers\EsignController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'verified', 'iam.auth'])->group(function (): void {
+Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('esign', [EsignController::class, 'create'])->name('esign.create');
     Route::post('esign', [EsignController::class, 'store'])->name('esign.store');
     Route::get('esign/complete', [EsignController::class, 'complete'])->name('esign.complete');

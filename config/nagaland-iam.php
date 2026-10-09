@@ -26,6 +26,7 @@ return [
     ],
 
     'esign' => [
+        'api_key' => env('IAM_ESIGN_API_KEY'),
         'completion_url' => env('IAM_ESIGN_COMPLETION_URL'),
         'endpoints' => [
             'create' => '/api/esign/requests',

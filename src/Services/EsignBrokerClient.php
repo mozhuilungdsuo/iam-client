@@ -13,14 +13,14 @@ use Nagaland\IamClient\Exceptions\IamConfigurationException;
 /**
  * Authenticated client for the IAM-hosted eSign broker.
  *
- * The broker prepares and submits the C-DAC eSign request on behalf of the
- * current IAM user. Applications use this client to create a transaction,
+ * The broker prepares and submits the C-DAC eSign request for an IAM OAuth
+ * client. Applications use this client to create a transaction,
  * redirect the browser to its one-time handoff URL, and later retrieve the
  * authoritative transaction status or completed document.
  *
- * A current IAM session is required for every operation. The session access
- * token must include `esign.request` for {@see create()} and `esign.read` for
- * {@see status()} and {@see download()}.
+ * Every operation uses the OAuth client's static eSign API key. Generate or
+ * rotate this key in IAM and configure it as `IAM_ESIGN_API_KEY`; IAM checks
+ * that the client allows `esign.request` or `esign.read`, as appropriate.
  *
  * @see EsignRequest The normalized broker response returned by create and status.
  */
@@ -29,7 +29,6 @@ final readonly class EsignBrokerClient
     /** @param array<string, mixed> $config */
     public function __construct(
         private HttpFactory $http,
-        private NagalandIamManager $iam,
         private array $config,
     ) {}
 
@@ -51,8 +50,8 @@ final readonly class EsignBrokerClient
      * @param string|null $signatureFieldName Optional signature-field name, used by direct mode.
      * @param string|null $signerName Optional signer name, used by visible mode when supplied.
      *
-     * @throws \RuntimeException When the uploaded file is unavailable or there is no IAM session.
-     * @throws IamConfigurationException When IAM_URL, the completion URL, or the create endpoint is missing.
+     * @throws \RuntimeException When the uploaded file is unavailable.
+     * @throws IamConfigurationException When IAM_URL, the eSign API key, completion URL, or create endpoint is missing.
      * @throws \Illuminate\Http\Client\RequestException When IAM rejects the request or is unreachable.
      */
     public function create(
@@ -93,8 +92,7 @@ final readonly class EsignBrokerClient
      *
      * @param string $transactionId IAM's public transaction identifier.
      *
-     * @throws \RuntimeException When there is no IAM session.
-     * @throws IamConfigurationException When IAM_URL or the show endpoint is missing.
+     * @throws IamConfigurationException When IAM_URL, the eSign API key, or the show endpoint is missing.
      * @throws \Illuminate\Http\Client\RequestException When IAM rejects the request or is unreachable.
      */
     public function status(string $transactionId): EsignRequest
@@ -112,8 +110,7 @@ final readonly class EsignBrokerClient
      * @param string $transactionId IAM's public transaction identifier.
      * @return string Raw bytes of the signed document.
      *
-     * @throws \RuntimeException When there is no IAM session.
-     * @throws IamConfigurationException When IAM_URL or the download endpoint is missing.
+     * @throws IamConfigurationException When IAM_URL, the eSign API key, or the download endpoint is missing.
      * @throws \Illuminate\Http\Client\RequestException When IAM rejects the request or is unreachable.
      */
     public function download(string $transactionId): string
@@ -123,13 +120,21 @@ final readonly class EsignBrokerClient
 
     private function request(): PendingRequest
     {
-        $tokens = $this->iam->tokens();
+        return $this->http
+            ->baseUrl(rtrim($this->iamUrl(), '/'))
+            ->acceptJson()
+            ->withHeader('X-IAM-eSign-Key', $this->apiKey());
+    }
 
-        if ($tokens === null) {
-            throw new \RuntimeException('An authenticated IAM session is required to use eSign.');
+    private function apiKey(): string
+    {
+        $key = $this->config['esign']['api_key'] ?? null;
+
+        if (! is_string($key) || $key === '') {
+            throw new IamConfigurationException('IAM_ESIGN_API_KEY is not configured.');
         }
 
-        return $this->http->baseUrl(rtrim($this->iamUrl(), '/'))->acceptJson()->withToken($tokens->accessToken);
+        return $key;
     }
 
     private function completionUrl(): string
