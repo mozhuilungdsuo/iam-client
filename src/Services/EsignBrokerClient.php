@@ -7,6 +7,7 @@ namespace Nagaland\IamClient\Services;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\UploadedFile;
+use Nagaland\IamClient\DTOs\EsignArtifacts;
 use Nagaland\IamClient\DTOs\EsignRequest;
 use Nagaland\IamClient\Exceptions\IamConfigurationException;
 
@@ -49,6 +50,7 @@ final readonly class EsignBrokerClient
      * @param 'direct'|'visible' $mode Signature-placement mode; defaults to direct.
      * @param string|null $signatureFieldName Optional signature-field name, used by direct mode.
      * @param string|null $signerName Optional signer name, used by visible mode when supplied.
+     * @param string|null $uidToken An eSign UID token returned by an earlier completed transaction for the same signer.
      *
      * @throws \RuntimeException When the uploaded file is unavailable.
      * @throws IamConfigurationException When IAM_URL, the eSign API key, completion URL, or create endpoint is missing.
@@ -61,6 +63,7 @@ final readonly class EsignBrokerClient
         string $mode = 'direct',
         ?string $signatureFieldName = null,
         ?string $signerName = null,
+        ?string $uidToken = null,
     ): EsignRequest {
         $path = $document->getRealPath();
 
@@ -77,6 +80,7 @@ final readonly class EsignBrokerClient
                 'mode' => $mode,
                 'signature_field_name' => $signatureFieldName,
                 'signer_name' => $signerName,
+                'uid_token' => $uidToken,
             ], static fn (mixed $value): bool => $value !== null));
 
         return EsignRequest::fromArray($response->throw()->json());
@@ -85,7 +89,7 @@ final readonly class EsignBrokerClient
     /**
      * Retrieves the current, authoritative state of an eSign transaction.
      *
-     * Only the IAM user and OAuth client that created the transaction can read it.
+     * Only the OAuth client identified by the eSign API key that created the transaction can read it.
      * Use this method after validating the `esign_transaction_id` and `state`
      * returned to the completion URL; do not infer completion from query-string
      * parameters.
@@ -116,6 +120,23 @@ final readonly class EsignBrokerClient
     public function download(string $transactionId): string
     {
         return $this->request()->get(str_replace('{transaction}', $transactionId, $this->endpoint('download')))->throw()->body();
+    }
+
+    /**
+     * Retrieves the request XML, response XML, and UID token for a transaction.
+     *
+     * Call this only from the application backend after {@see status()} confirms
+     * completion. Store the returned UID token as a secret; it can be supplied to
+     * a subsequent {@see create()} call for the same signer.
+     *
+     * @param string $transactionId IAM's public transaction identifier.
+     *
+     * @throws IamConfigurationException When IAM_URL, the eSign API key, or the artifacts endpoint is missing.
+     * @throws \Illuminate\Http\Client\RequestException When IAM rejects the request or is unreachable.
+     */
+    public function artifacts(string $transactionId): EsignArtifacts
+    {
+        return EsignArtifacts::fromArray($this->request()->get(str_replace('{transaction}', $transactionId, $this->endpoint('artifacts')))->throw()->json());
     }
 
     private function request(): PendingRequest

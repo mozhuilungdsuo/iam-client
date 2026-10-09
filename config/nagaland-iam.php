@@ -31,6 +31,7 @@ return [
         'endpoints' => [
             'create' => '/api/esign/requests',
             'show' => '/api/esign/requests/{transaction}',
+            'artifacts' => '/api/esign/requests/{transaction}/artifacts',
             'download' => '/api/esign/requests/{transaction}/download',
         ],
     ],

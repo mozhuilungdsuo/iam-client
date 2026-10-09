@@ -63,6 +63,7 @@ Accept: application/json
 | --- | --- | --- |
 | Create a request | `POST /api/esign/requests` | `esign.request` |
 | Read a request | `GET /api/esign/requests/{transaction_id}` | `esign.read` |
+| Get eSign artifacts | `GET /api/esign/requests/{transaction_id}/artifacts` | `esign.read` |
 | Download a completed request | `GET /api/esign/requests/{transaction_id}/download` | `esign.read` |
 
 `transaction_id` is IAM's public transaction identifier returned by the create endpoint. Treat it as opaque.
@@ -92,6 +93,7 @@ curl --request POST "$IAM_BASE_URL/api/esign/requests" \
 | `mode` | No | `direct` (default) or `visible`. Use `direct` for every request in a document that requires multiple signatures. |
 | `signature_field_name` | No | Optional field name for `direct` mode; maximum 120 characters. |
 | `signer_name` | No | Optional signer name for `visible` mode; maximum 120 characters. |
+| `uid_token` | No | UID token from a previous completed transaction for the same signer; maximum 72 characters. Send it only from the application backend. |
 
 ### Multiple signatures and signing modes
 
@@ -166,7 +168,30 @@ The normal statuses are:
 
 Treat unrecognized statuses as not completed so a future server-side status does not accidentally grant download access.
 
-## 4. Download the signed document
+## 4. Retrieve artifacts and reuse a UID token
+
+After a transaction has status `completed`, retrieve its XML artifacts and UID token from the application backend:
+
+```bash
+curl --request GET \
+  --header "X-IAM-eSign-Key: $IAM_ESIGN_API_KEY" \
+  --header "Accept: application/json" \
+  "$IAM_BASE_URL/api/esign/requests/5c8e9b5e-33ee-4d79-9aa4-84d0bb08dd0e/artifacts"
+```
+
+```json
+{
+  "transaction_id": "5c8e9b5e-33ee-4d79-9aa4-84d0bb08dd0e",
+  "status": "completed",
+  "esign_xml": "<Esign ...>",
+  "esign_response_xml": "<EsignResp ...>",
+  "uid_token": "..."
+}
+```
+
+Store the returned artifacts and UID token securely. For a later signing request by the same signer, include the stored token as the `uid_token` multipart field. Do not send XML or UID tokens to browser JavaScript, browser sessions, or URLs.
+
+## 5. Download the signed document
 
 Only download after a fresh status response reports `completed`:
 
@@ -194,7 +219,7 @@ IAM uses standard HTTP failure responses. Preserve the status code for applicati
 
 ## Security checklist
 
-- Keep eSign API keys, the original uploaded file, and state values server-side.
+- Keep eSign API keys, the original uploaded file, state values, XML artifacts, and UID tokens server-side.
 - Generate state with a cryptographically secure random generator and bind it to the current browser session plus the business record being signed.
 - Register a fixed HTTPS completion URL. Never take `completion_url` from untrusted browser input.
 - Verify both transaction ownership and state on completion; then request status from IAM.

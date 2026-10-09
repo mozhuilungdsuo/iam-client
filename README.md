@@ -112,6 +112,7 @@ The browser does not need an IAM login during signing. The client starts the bro
 | --- | --- | --- |
 | `create()` | `esign.request` allowed for the OAuth client | Upload a document and create an eSign transaction. |
 | `status()` | `esign.read` allowed for the OAuth client | Retrieve the authoritative transaction state. |
+| `artifacts()` | `esign.read` allowed for the OAuth client | Retrieve the eSign request XML, response XML, and UID token. |
 | `download()` | `esign.read` allowed for the OAuth client | Retrieve the completed signed document bytes. |
 
 Missing `IAM_URL`, `IAM_ESIGN_API_KEY`, `IAM_ESIGN_COMPLETION_URL`, or configured eSign endpoints cause an `IamConfigurationException`; non-successful IAM responses are raised by Laravel's HTTP client as `RequestException` instances.
@@ -125,6 +126,7 @@ The default endpoint configuration is:
     'endpoints' => [
         'create' => '/api/esign/requests',
         'show' => '/api/esign/requests/{transaction}',
+        'artifacts' => '/api/esign/requests/{transaction}/artifacts',
         'download' => '/api/esign/requests/{transaction}/download',
     ],
 ],
@@ -133,6 +135,21 @@ The default endpoint configuration is:
 `create()` sends multipart form data. IAM accepts PDF, JPG, JPEG, and PNG uploads up to 20 MB. Its `clientReference` must be an application-owned ASCII alpha-dash identifier of at most 160 characters. It is idempotent for an OAuth client: repeating a reference returns its existing transaction instead of creating a second signing request.
 
 `state` is an opaque value that IAM appends to the completion URL. Use a cryptographically random value and store it in the current browser session. The `direct` mode is the default and accepts `signatureFieldName`; `visible` mode may use `signerName`. For multiple signatures on the same document, use `direct` for every signing request: it appends an invisible field without rebuilding the PDF and preserves earlier signatures. Visible mode renders a new PDF and must only be used for a single visible signature.
+
+After a completed signing, call `artifacts()` from your backend to obtain the request XML, response XML, and `uidToken`. Store these values securely. Pass a stored `uidToken` to a later `create()` call for the same signer so the eSign provider can reuse it:
+
+```php
+$artifacts = $esign->artifacts($transactionId);
+
+// Store encrypted; never put this value in a browser session or URL.
+$uidToken = $artifacts->uidToken;
+
+$nextTransaction = $esign->create(
+    document: $document,
+    clientReference: 'next-signing-attempt',
+    uidToken: $uidToken,
+);
+```
 
 The following reference controller implements the full request, completion, and download flow. The default `direct` mode appends an invisible signature field without rebuilding the PDF, which preserves existing signatures. Replace the sample client-reference prefix and views with your application's equivalents.
 
