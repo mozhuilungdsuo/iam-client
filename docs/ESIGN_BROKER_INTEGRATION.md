@@ -83,7 +83,7 @@ curl --request POST "$IAM_BASE_URL/api/esign/requests" \
 | --- | --- | --- |
 | `document` | Yes | PDF, JPG, JPEG, or PNG; maximum 20 MB. |
 | `client_reference` | Yes | Application-owned ASCII alpha-dash value, maximum 160 characters. Use a durable unique record identifier. |
-| `completion_url` | Yes | Exact registered OAuth redirect URI to receive the post-signing browser redirect; maximum 2,000 characters. |
+| `completion_url` | Yes | Exact eSign Completion URL configured for the OAuth client in IAM Admin; maximum 2,000 characters. |
 | `state` | No, strongly recommended | Opaque application value returned unchanged to the completion URL; maximum 255 characters. |
 | `mode` | No | `direct` (default) or `visible`. |
 | `signature_field_name` | No | Optional field name for `direct` mode; maximum 120 characters. |
@@ -177,7 +177,7 @@ IAM uses standard HTTP failure responses. Preserve the status code for applicati
 | --- | --- | --- |
 | Missing, invalid, revoked, or wrong-client API key | `401` or `403` | Check the header and key status; do not reveal another client's transaction details. |
 | Missing eSign scope | `403` | Enable the required scope for the OAuth client in IAM. |
-| Invalid upload, mode, completion URL, or request field | `422` | Show a validation error. A completion URL that is not registered for the OAuth client is rejected. |
+| Invalid upload, mode, completion URL, or request field | `422` | Show a validation error. A completion URL that does not match the OAuth client's configured eSign Completion URL is rejected. |
 | Handoff already used or expired | `410` | Start a new signing request with a new client reference. |
 | Download before completion | `409` | Recheck status later; do not treat it as a signed document. |
 | Failed transaction | `200` status payload with `status: "failed"` | Display an appropriate failure flow and retain diagnostic information only where permitted. |

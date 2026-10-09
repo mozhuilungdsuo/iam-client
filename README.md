@@ -93,6 +93,8 @@ IAM owns the C-DAC private key, request XML, callback, and signed-document stora
 
 For a framework-neutral HTTP integration guide, see [IAM eSign Broker Integration Guide](docs/ESIGN_BROKER_INTEGRATION.md). It covers OAuth setup, API requests, browser handoff, callback validation, and downloads for non-Laravel applications.
 
+For a runnable Express reference in this workspace, see the [Node.js eSign example](../../../../node-esign-client/README.md).
+
 To enable eSigning:
 
 1. Allow `esign.request` and `esign.read` for the OAuth client in IAM.
