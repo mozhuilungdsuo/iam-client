@@ -1,38 +1,30 @@
 # IAM eSign Broker Integration Guide
 
-This guide describes how any server-side application can integrate with the Nagaland IAM eSign broker. It is framework- and language-neutral: use its HTTPS API from Django, Express, Spring, .NET, Laravel, or another backend.
+This guide describes only the work a consuming server-side application must implement to integrate with the Nagaland IAM eSign broker. It is framework- and language-neutral: use its HTTPS API from Django, Express, Spring, .NET, Laravel, or another backend.
 
 > The Laravel package offers `EsignBrokerClient` as a convenience wrapper. Applications that do not use Laravel can call the endpoints in this document directly.
 
-## What IAM handles
-
-IAM is the broker between an application and C-DAC eSign. It owns the C-DAC private key, creates the eSign XML, receives the C-DAC callback, and stores the signed document. An integrating application must not install the C-DAC private key or send request XML directly to C-DAC.
+## What your application must implement
 
 Your application is responsible for:
 
 - retaining its eSign API key in a server-side secret store;
-- uploading the document to IAM and directing the browser to the returned handoff URL;
+- uploading the document to IAM and redirecting the browser to the returned handoff URL;
 - storing a transaction-to-browser-session association and a random state value;
 - validating the callback, checking the final status, and serving the downloaded signed file.
 
 ## Prerequisites
 
-Before making API calls, configure the OAuth client in IAM:
+Before integration, provide the public `completion_url` for your application to the Department of IT&C. The Department of IT&C will provide the eSign API key.
 
-1. Allow `esign.request` and `esign.read` in the OAuth client's IAM configuration.
-2. Set the application's completion URL in the OAuth client's **eSign Completion URL** field in IAM Admin. The value sent as `completion_url` must exactly match this field.
-3. Generate an eSign API key from **IAM Admin → OAuth Clients**. IAM displays the plaintext key once; store it in the application's secret manager.
-4. Use an HTTPS IAM URL and keep the API key on the server. Do not expose it to browser JavaScript.
-
-The broker uses a static eSign API key rather than an IAM user login. A key can create, read, and download only transactions belonging to its OAuth client. Generating a replacement key invalidates the prior key immediately; an IAM administrator can revoke a key at any time.
+Store the API key only in your server-side secret manager. The `completion_url` sent when creating a request must exactly match the URL you provided.
 
 ## Integration flow
 
 ```text
 Application backend  -- create request -->  IAM broker
 Application browser  <-- handoff URL ------  IAM broker
-Application browser  -- visit URL ------->  IAM / C-DAC signing journey
-C-DAC                -- signed result --->  IAM broker
+Application browser  -- redirect -------->  IAM handoff URL
 Application browser  <-- completion URL --  IAM broker
 Application backend  -- status/download --> IAM broker
 ```
@@ -41,14 +33,26 @@ Application backend  -- status/download --> IAM broker
 2. Generate a high-entropy `state` value and retain it alongside the browser session and the application record being signed.
 3. Call the create endpoint with a unique, application-owned `client_reference` and the uploaded document.
 4. Store the returned `transaction_id`, the random state, and the original filename in the browser session before redirecting the browser to `handoff_url`.
-5. IAM's handoff page posts the request to C-DAC. The handoff URL is single-use and expires after 10 minutes.
-6. IAM receives C-DAC's response, then redirects the browser to `completion_url` with `esign_transaction_id` and `state`.
+5. Redirect the browser to IAM's returned handoff URL. It is single-use and expires after 10 minutes.
+6. IAM redirects the browser to `completion_url` with `esign_transaction_id` and `state` when the signing journey finishes.
 7. Verify that the transaction belongs to the current browser session and compare state values using a constant-time comparison. Fetch the transaction status from IAM; do not accept a status supplied by the query string.
 8. When the status is `completed`, call the download endpoint and stream the returned bytes to the user as a file.
 
-## API base URL and authentication
+## IAM base URL
 
-Set `IAM_BASE_URL` to the IAM installation URL without a trailing slash. All API requests need the OAuth client's eSign API key and should request JSON responses:
+Set `IAM_BASE_URL` to the IAM installation URL without a trailing slash.
+
+Example:
+
+```text
+https://iam.example.gov.in
+```
+
+All endpoint paths in this guide are relative to this base URL.
+
+## Authentication
+
+All API requests need the eSign API key and should request JSON responses:
 
 ```http
 X-IAM-eSign-Key: <eSign-api-key>
@@ -85,9 +89,15 @@ curl --request POST "$IAM_BASE_URL/api/esign/requests" \
 | `client_reference` | Yes | Application-owned ASCII alpha-dash value, maximum 160 characters. Use a durable unique record identifier. |
 | `completion_url` | Yes | Exact eSign Completion URL configured for the OAuth client in IAM Admin; maximum 2,000 characters. |
 | `state` | No, strongly recommended | Opaque application value returned unchanged to the completion URL; maximum 255 characters. |
-| `mode` | No | `direct` (default) or `visible`. |
+| `mode` | No | `direct` (default) or `visible`. Use `direct` for every request in a document that requires multiple signatures. |
 | `signature_field_name` | No | Optional field name for `direct` mode; maximum 120 characters. |
 | `signer_name` | No | Optional signer name for `visible` mode; maximum 120 characters. |
+
+### Multiple signatures and signing modes
+
+For a document that will receive more than one signature, use `mode=direct` for **every** signing request. Direct mode appends an invisible signature field without rebuilding the PDF, preserving the document bytes and all signatures already applied. The signed PDF can then be submitted for the next signer.
+
+Visible mode renders a new PDF to add visible signer information. That rebuild does not preserve earlier PDF signatures, so do not use visible mode in a multi-signature sequence. Use it only for a single visible signature on a document that does not need to retain a prior signature.
 
 A newly created request returns HTTP `201 Created` and a payload similar to:
 
@@ -100,7 +110,7 @@ A newly created request returns HTTP `201 Created` and a payload similar to:
 }
 ```
 
-Redirect the browser to `handoff_url` immediately. Do not fetch the URL from your backend: it begins the browser-facing signing flow.
+Redirect the browser to the returned `handoff_url` immediately. Do not fetch the URL from your backend: visiting it begins the browser-facing signing flow.
 
 ### Idempotency
 
