@@ -20,7 +20,7 @@ Your application is responsible for:
 Before making API calls, configure the OAuth client in IAM:
 
 1. Allow `esign.request` and `esign.read` in the OAuth client's IAM configuration.
-2. Register the application's completion URL as an OAuth redirect URI for that client. The value sent as `completion_url` must exactly match a registered URI.
+2. Set the application's completion URL in the OAuth client's **eSign Completion URL** field in IAM Admin. The value sent as `completion_url` must exactly match this field.
 3. Generate an eSign API key from **IAM Admin → OAuth Clients**. IAM displays the plaintext key once; store it in the application's secret manager.
 4. Use an HTTPS IAM URL and keep the API key on the server. Do not expose it to browser JavaScript.
 

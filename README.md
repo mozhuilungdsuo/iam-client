@@ -97,7 +97,7 @@ To enable eSigning:
 
 1. Allow `esign.request` and `esign.read` for the OAuth client in IAM.
 2. Generate the client's eSign API key in IAM Admin and store the displayed value as `IAM_ESIGN_API_KEY`.
-3. Register `IAM_ESIGN_COMPLETION_URL` as an OAuth redirect URI in IAM.
+3. Set `IAM_ESIGN_COMPLETION_URL` in the OAuth client's **eSign Completion URL** field in IAM Admin.
 4. Run `php artisan migrate` in IAM so its `esign_transactions` table exists.
 
 The browser does not need an IAM login during signing. The client starts the broker request using its server-side eSign API key, then redirects the browser to a single-use, 10-minute IAM handoff URL. IAM submits the signed request XML to C-DAC and receives the C-DAC callback. After completion, IAM redirects to the configured client completion URL.
