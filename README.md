@@ -131,35 +131,140 @@ The default endpoint configuration is:
 
 `state` is an opaque value that IAM appends to the completion URL. Use a cryptographically random value and store it in the current browser session. The `direct` mode is the default and accepts `signatureFieldName`; `visible` mode may use `signerName`.
 
-Inject `Nagaland\IamClient\Services\EsignBrokerClient` into a controller and create the request with the uploaded file. The default `direct` mode appends an invisible signature field without rebuilding the PDF, which preserves existing signatures.
+The following reference controller implements the full request, completion, and download flow. The default `direct` mode appends an invisible signature field without rebuilding the PDF, which preserves existing signatures. Replace the sample client-reference prefix and views with your application's equivalents.
 
 ```php
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Nagaland\IamClient\Services\EsignBrokerClient;
+use Throwable;
 
-$request = $esignBroker->create(
-    document: $validated['document'],
-    clientReference: (string) $document->id,
-    state: Str::random(48),
-    mode: 'direct',
-    signatureFieldName: 'Approval',
-);
+final class EsignController extends Controller
+{
+    private const SESSION_KEY = 'client_esign_transactions';
 
-return redirect()->away($request->handoffUrl);
-```
+    public function create(): View
+    {
+        return view('esign.create');
+    }
 
-The returned `EsignRequest` contains `transactionId`, `clientReference`, `status`, and—only for a newly created transaction—`handoffUrl`. A status response can additionally include `signerName` and `failureReason`. `completed()` is true only when `status` is `completed`.
+    public function store(Request $request, EsignBrokerClient $esign): RedirectResponse
+    {
+        $validated = $request->validate([
+            'document' => ['required', 'file', 'mimes:pdf', 'max:20480'],
+            'signature_field_name' => ['nullable', 'string', 'max:120'],
+        ]);
+        $state = Str::random(48);
 
-The completion URL receives `esign_transaction_id` and `state`. Validate both the transaction's ownership in the current session and the state value, then use `status()` to obtain the authoritative result; do not trust query-string status values. IAM permits status checks and downloads only to the user and OAuth client that created the transaction.
+        try {
+            $transaction = $esign->create(
+                document: $validated['document'],
+                clientReference: 'sample-'.Str::uuid(),
+                state: $state,
+                mode: 'direct',
+                signatureFieldName: $validated['signature_field_name'] ?? 'Client approval',
+            );
+        } catch (Throwable $throwable) {
+            report($throwable);
 
-```php
-$result = $esignBroker->status($transactionId);
+            return back()->withInput()->withErrors(['document' => $throwable->getMessage()]);
+        }
 
-if ($result->completed()) {
-    $signedPdf = $esignBroker->download($transactionId);
+        $transactions = $request->session()->get(self::SESSION_KEY, []);
+        $transactions[$transaction->transactionId] = [
+            'state' => $state,
+            'filename' => $validated['document']->getClientOriginalName(),
+        ];
+        $request->session()->put(self::SESSION_KEY, $transactions);
+
+        if ($transaction->handoffUrl === null) {
+            return redirect()->route('esign.complete', [
+                'esign_transaction_id' => $transaction->transactionId,
+                'state' => $state,
+            ]);
+        }
+
+        return redirect()->away($transaction->handoffUrl);
+    }
+
+    public function complete(Request $request, EsignBrokerClient $esign): View|RedirectResponse
+    {
+        $transactionId = (string) $request->query('esign_transaction_id', '');
+        $transaction = $this->sessionTransaction($request, $transactionId);
+
+        if ($transaction === null || ! hash_equals($transaction['state'], (string) $request->query('state', ''))) {
+            abort(403, 'This eSign completion does not belong to the current browser session.');
+        }
+
+        try {
+            $result = $esign->status($transactionId);
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            return redirect()->route('esign.create')->withErrors(['document' => $throwable->getMessage()]);
+        }
+
+        return view('esign.complete', compact('result', 'transactionId'));
+    }
+
+    public function download(string $transactionId, Request $request, EsignBrokerClient $esign)
+    {
+        $transaction = $this->sessionTransaction($request, $transactionId);
+        abort_if($transaction === null, 403);
+
+        try {
+            $result = $esign->status($transactionId);
+            abort_unless($result->completed(), 409, 'The signed document is not ready.');
+            $contents = $esign->download($transactionId);
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            return redirect()->route('esign.complete', ['esign_transaction_id' => $transactionId, 'state' => $transaction['state']])
+                ->withErrors(['document' => $throwable->getMessage()]);
+        }
+
+        $filename = pathinfo($transaction['filename'], PATHINFO_FILENAME).'-signed.pdf';
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    /** @return array{state: string, filename: string}|null */
+    private function sessionTransaction(Request $request, string $transactionId): ?array
+    {
+        $transactions = $request->session()->get(self::SESSION_KEY, []);
+        $transaction = is_array($transactions) ? ($transactions[$transactionId] ?? null) : null;
+
+        return is_array($transaction) && isset($transaction['state'], $transaction['filename']) ? $transaction : null;
+    }
 }
 ```
 
-`download()` returns raw signed-document bytes. Send them in an application response with an appropriate content type and attachment filename; do not download until `completed()` returns `true`.
+Register the routes behind your normal Laravel and IAM-session middleware. `IAM_ESIGN_COMPLETION_URL` must point to the named completion route.
+
+```php
+use App\Http\Controllers\EsignController;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware(['auth', 'verified', 'iam.auth'])->group(function (): void {
+    Route::get('esign', [EsignController::class, 'create'])->name('esign.create');
+    Route::post('esign', [EsignController::class, 'store'])->name('esign.store');
+    Route::get('esign/complete', [EsignController::class, 'complete'])->name('esign.complete');
+    Route::get('esign/{transactionId}/download', [EsignController::class, 'download'])->name('esign.download');
+});
+```
+
+The returned `EsignRequest` contains `transactionId`, `clientReference`, `status`, and—only for a newly created transaction—`handoffUrl`. A status response can additionally include `signerName` and `failureReason`. `completed()` is true only when `status` is `completed`. The controller validates the browser-session transaction and state before querying IAM, then downloads only completed documents.
 
 During login the package verifies:
 
