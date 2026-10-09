@@ -102,6 +102,35 @@ To enable eSigning:
 
 The browser does not need a separate IAM login during signing. The client starts the broker request using its server-side OAuth access token, then redirects the browser to a single-use, 10-minute IAM handoff URL. IAM submits the signed request XML to C-DAC and receives the C-DAC callback. After completion, IAM redirects to the configured client completion URL.
 
+### `EsignBrokerClient` API
+
+`EsignBrokerClient` is registered as a Laravel singleton and can be type-hinted in a controller or resolved from the container. Each operation uses the access token stored in the current IAM session:
+
+| Method | Required scope | Purpose |
+| --- | --- | --- |
+| `create()` | `esign.request` | Upload a document and create an eSign transaction. |
+| `status()` | `esign.read` | Retrieve the authoritative transaction state. |
+| `download()` | `esign.read` | Retrieve the completed signed document bytes. |
+
+If there is no authenticated IAM session, the client throws a `RuntimeException`. Missing `IAM_URL`, `IAM_ESIGN_COMPLETION_URL`, or configured eSign endpoints cause an `IamConfigurationException`; non-successful IAM responses are raised by Laravel's HTTP client as `RequestException` instances.
+
+The default endpoint configuration is:
+
+```php
+'esign' => [
+    'completion_url' => env('IAM_ESIGN_COMPLETION_URL'),
+    'endpoints' => [
+        'create' => '/api/esign/requests',
+        'show' => '/api/esign/requests/{transaction}',
+        'download' => '/api/esign/requests/{transaction}/download',
+    ],
+],
+```
+
+`create()` sends multipart form data. IAM accepts PDF, JPG, JPEG, and PNG uploads up to 20 MB. Its `clientReference` must be an application-owned ASCII alpha-dash identifier of at most 160 characters. It is idempotent for an OAuth client: repeating a reference returns its existing transaction instead of creating a second signing request.
+
+`state` is an opaque value that IAM appends to the completion URL. Use a cryptographically random value and store it in the current browser session. The `direct` mode is the default and accepts `signatureFieldName`; `visible` mode may use `signerName`.
+
 Inject `Nagaland\IamClient\Services\EsignBrokerClient` into a controller and create the request with the uploaded file. The default `direct` mode appends an invisible signature field without rebuilding the PDF, which preserves existing signatures.
 
 ```php
@@ -118,7 +147,9 @@ $request = $esignBroker->create(
 return redirect()->away($request->handoffUrl);
 ```
 
-The completion URL receives `esign_transaction_id` and `state`. Validate the state against the client browser session, then use `status()` to obtain the authoritative result; do not trust query-string status values.
+The returned `EsignRequest` contains `transactionId`, `clientReference`, `status`, and—only for a newly created transaction—`handoffUrl`. A status response can additionally include `signerName` and `failureReason`. `completed()` is true only when `status` is `completed`.
+
+The completion URL receives `esign_transaction_id` and `state`. Validate both the transaction's ownership in the current session and the state value, then use `status()` to obtain the authoritative result; do not trust query-string status values. IAM permits status checks and downloads only to the user and OAuth client that created the transaction.
 
 ```php
 $result = $esignBroker->status($transactionId);
@@ -128,7 +159,7 @@ if ($result->completed()) {
 }
 ```
 
-The broker API only permits the user and OAuth client that created a transaction to query it or download the signed PDF.
+`download()` returns raw signed-document bytes. Send them in an application response with an appropriate content type and attachment filename; do not download until `completed()` returns `true`.
 
 During login the package verifies:
 
