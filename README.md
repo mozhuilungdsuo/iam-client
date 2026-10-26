@@ -134,7 +134,17 @@ The default endpoint configuration is:
 
 `create()` sends multipart form data. IAM accepts PDF, JPG, JPEG, and PNG uploads up to 20 MB. Its `clientReference` must be an application-owned ASCII alpha-dash identifier of at most 160 characters. It is idempotent for an OAuth client: repeating a reference returns its existing transaction instead of creating a second signing request.
 
-`state` is an opaque value that IAM appends to the completion URL. Use a cryptographically random value and store it in the current browser session. The `direct` mode is the default and accepts `signatureFieldName`; `visible` mode may use `signerName`. For multiple signatures on the same document, use `direct` for every signing request: it appends an invisible field without rebuilding the PDF and preserves earlier signatures. Visible mode renders a new PDF and must only be used for a single visible signature.
+`state` is an opaque value that IAM appends to the completion URL. Use a cryptographically random value and store it in the current browser session. The `direct` mode is the default and accepts `signatureFieldName`; `visible` mode may use `signerName` and `signaturePosition`. The position may be `top-left`, `top-right`, `bottom-left`, or `bottom-right`; pass `null` (the default) to use IAM's bottom-right placement. For multiple signatures on the same document, use `direct` for every signing request: it appends an invisible field without rebuilding the PDF and preserves earlier signatures. Visible mode renders a new PDF and must only be used for a single visible signature.
+
+```php
+$transaction = $esign->create(
+    document: $document,
+    clientReference: 'visible-approval-12345',
+    mode: 'visible',
+    signerName: 'Jane Doe',
+    signaturePosition: 'top-right',
+);
+```
 
 After a completed signing, call `artifacts()` from your backend to obtain the request XML, response XML, and `uidToken`. Store these values securely. Pass a stored `uidToken` to a later `create()` call for the same signer so the eSign provider can reuse it:
 

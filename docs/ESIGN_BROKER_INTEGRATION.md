@@ -80,8 +80,9 @@ curl --request POST "$IAM_BASE_URL/api/esign/requests" \
   --form "client_reference=approval-12345" \
   --form "completion_url=https://client.example.gov.in/esign/complete" \
   --form "state=$ESIGN_STATE" \
-  --form "mode=direct" \
-  --form "signature_field_name=Approval"
+  --form "mode=visible" \
+  --form "signer_name=Jane Doe" \
+  --form "signature_position=bottom-right"
 ```
 
 | Field | Required | Rules and meaning |
@@ -93,6 +94,7 @@ curl --request POST "$IAM_BASE_URL/api/esign/requests" \
 | `mode` | No | `direct` (default) or `visible`. Use `direct` for every request in a document that requires multiple signatures. |
 | `signature_field_name` | No | Optional field name for `direct` mode; maximum 120 characters. |
 | `signer_name` | No | Optional signer name for `visible` mode; maximum 120 characters. |
+| `signature_position` | No | Visible-signature placement: `top-left`, `top-right`, `bottom-left`, or `bottom-right`. Omit it to use IAM's default bottom-right placement. Ignored by `direct` mode. |
 | `uid_token` | No | UID token from a previous completed transaction for the same signer; maximum 72 characters. Send it only from the application backend. |
 
 ### Multiple signatures and signing modes
@@ -100,6 +102,8 @@ curl --request POST "$IAM_BASE_URL/api/esign/requests" \
 For a document that will receive more than one signature, use `mode=direct` for **every** signing request. Direct mode appends an invisible signature field without rebuilding the PDF, preserving the document bytes and all signatures already applied. The signed PDF can then be submitted for the next signer.
 
 Visible mode renders a new PDF to add visible signer information. That rebuild does not preserve earlier PDF signatures, so do not use visible mode in a multi-signature sequence. Use it only for a single visible signature on a document that does not need to retain a prior signature.
+
+When using visible mode, optionally send `signature_position` to choose one of the four page corners. If it is omitted, IAM uses the bottom-right position.
 
 A newly created request returns HTTP `201 Created` and a payload similar to:
 

@@ -51,6 +51,7 @@ final readonly class EsignBrokerClient
      * @param string|null $signatureFieldName Optional signature-field name, used by direct mode.
      * @param string|null $signerName Optional signer name, used by visible mode when supplied.
      * @param string|null $uidToken An eSign UID token returned by an earlier completed transaction for the same signer.
+     * @param 'top-left'|'top-right'|'bottom-left'|'bottom-right'|null $signaturePosition Visible-signature placement. Null keeps IAM's default bottom-right position.
      *
      * @throws \RuntimeException When the uploaded file is unavailable.
      * @throws IamConfigurationException When IAM_URL, the eSign API key, completion URL, or create endpoint is missing.
@@ -64,6 +65,7 @@ final readonly class EsignBrokerClient
         ?string $signatureFieldName = null,
         ?string $signerName = null,
         ?string $uidToken = null,
+        ?string $signaturePosition = null,
     ): EsignRequest {
         $path = $document->getRealPath();
 
@@ -81,6 +83,7 @@ final readonly class EsignBrokerClient
                 'signature_field_name' => $signatureFieldName,
                 'signer_name' => $signerName,
                 'uid_token' => $uidToken,
+                'signature_position' => $signaturePosition,
             ], static fn (mixed $value): bool => $value !== null));
 
         return EsignRequest::fromArray($response->throw()->json());
